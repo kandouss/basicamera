@@ -1,0 +1,4 @@
+*.o
+c/cam
+c/example
+*.swp
