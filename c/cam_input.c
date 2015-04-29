@@ -14,7 +14,16 @@
 
 #include <linux/videodev2.h>
 
+#include "config.h"
+#include "image_proc.h"
 #include "cam_input.h"
+
+static int              fd = -1;
+struct buffer          *buffers;
+static unsigned int     n_buffers;
+static int              out_buf;
+static int              force_format;
+static int              frame_count = 5;
 
 static void errno_exit(const char *s)
 {
@@ -153,7 +162,7 @@ static void init_mmap(void)
         if (-1 == xioctl(fd, VIDIOC_REQBUFS, &req)) {
                 if (EINVAL == errno) {
                         fprintf(stderr, "%s does not support "
-                                 "memory mapping\n", dev_name);
+                                 "memory mapping\n", VIDEO_DEVICE_NAME);
                         exit(EXIT_FAILURE);
                 } else {
                         errno_exit("VIDIOC_REQBUFS");
@@ -162,7 +171,7 @@ static void init_mmap(void)
 
         if (req.count < 2) {
                 fprintf(stderr, "Insufficient buffer memory on %s\n",
-                         dev_name);
+                         VIDEO_DEVICE_NAME);
                 exit(EXIT_FAILURE);
         }
 
@@ -209,7 +218,7 @@ static void init_device(void)
         if (-1 == xioctl(fd, VIDIOC_QUERYCAP, &cap)) {
                 if (EINVAL == errno) {
                         fprintf(stderr, "%s is no V4L2 device\n",
-                                 dev_name);
+                                 VIDEO_DEVICE_NAME);
                         exit(EXIT_FAILURE);
                 } else {
                         errno_exit("VIDIOC_QUERYCAP");
@@ -218,12 +227,12 @@ static void init_device(void)
 
         if (!(cap.capabilities & V4L2_CAP_VIDEO_CAPTURE)) {
                 fprintf(stderr, "%s is no video capture device\n",
-                         dev_name);
+                         VIDEO_DEVICE_NAME);
                 exit(EXIT_FAILURE);
         }
 		if (!(cap.capabilities & V4L2_CAP_STREAMING)) {
 				fprintf(stderr, "%s does not support streaming i/o\n",
-						 dev_name);
+						 VIDEO_DEVICE_NAME);
 				exit(EXIT_FAILURE);
 		}
 
@@ -254,8 +263,8 @@ static void init_device(void)
 
         fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         if (force_format) {
-                fmt.fmt.pix.width       = 640;
-                fmt.fmt.pix.height      = 480;
+                fmt.fmt.pix.width       = CAM_WIDTH;
+                fmt.fmt.pix.height      = CAM_HEIGHT;
                 fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
                 fmt.fmt.pix.field       = V4L2_FIELD_INTERLACED;
 
@@ -292,22 +301,22 @@ static void _open_device(void)
 {
         struct stat st;
 
-        if (-1 == stat(dev_name, &st)) {
+        if (-1 == stat(VIDEO_DEVICE_NAME, &st)) {
                 fprintf(stderr, "Cannot identify '%s': %d, %s\n",
-                         dev_name, errno, strerror(errno));
+                         VIDEO_DEVICE_NAME, errno, strerror(errno));
                 exit(EXIT_FAILURE);
         }
 
         if (!S_ISCHR(st.st_mode)) {
-                fprintf(stderr, "%s is no device\n", dev_name);
+                fprintf(stderr, "%s is no device\n", VIDEO_DEVICE_NAME);
                 exit(EXIT_FAILURE);
         }
 
-        fd = open(dev_name, O_RDWR /* required */ | O_NONBLOCK, 0);
+        fd = open(VIDEO_DEVICE_NAME, O_RDWR /* required */ | O_NONBLOCK, 0);
 
         if (-1 == fd) {
                 fprintf(stderr, "Cannot open '%s': %d, %s\n",
-                         dev_name, errno, strerror(errno));
+                         VIDEO_DEVICE_NAME, errno, strerror(errno));
                 exit(EXIT_FAILURE);
         }
 }
@@ -315,7 +324,7 @@ static void _open_device(void)
 
 int open_device(void)
 {
-	dev_name = "/dev/video0";
+//	dev_name = "/dev/video0";
 	_open_device();
 	init_device();
 	start_capturing();

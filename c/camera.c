@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <assert.h>
 
@@ -12,27 +13,27 @@
 #include <sys/mman.h>
 #include <sys/ioctl.h>
 
+#include "config.h"
+#include "image_proc.h"
 #include "cam_input.h"
-
-static void process_image(buffer b)
-{
-        fflush(stderr);
-        fprintf(stderr, ".");
-	fprintf(stdout,"buffer is (%u,%u)\n",b.start,b.length);
-        fflush(stdout);
-}
+#include "sdl_output.h"
 
 void mainloop(void)
 {
-	unsigned int count;
-	
-	count = 10;
+	buffer raw,rgb;
+	init_buffer(&rgb,CAM_WIDTH*CAM_HEIGHT*3);
+	int ok = start_showing(&rgb,"SDL buffer");
+	if(ok==-1)
+		fprintf(stderr,"EVERYTHING IS FUCKED\n");
 
-	while(count --> 0) {
-		fprintf(stdout,"loop index is %d\n",count);
-		buffer b = get_frame(3);
-		process_image(b);
+	for(;;)
+	{	
+		raw = get_frame(3);
+		yuy2_to_rgb(&raw,&rgb);
+		render();	
 	}
+
+	kill_buffer(&rgb);
 }
 
 int main(int argc, char **argv)
